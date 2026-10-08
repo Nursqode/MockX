@@ -86,6 +86,9 @@ import com.noobexon.xposedfakelocation.data.KEY_WALKING_CURRENT_LONGITUDE
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_DISTANCE_TRAVELLED
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_ENABLED
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_ERROR_CODE
+import com.noobexon.xposedfakelocation.data.KEY_WALKING_HOME_LATITUDE
+import com.noobexon.xposedfakelocation.data.KEY_WALKING_HOME_LONGITUDE
+import com.noobexon.xposedfakelocation.data.KEY_WALKING_MODE
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_PHASE
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_ROUTE_JSON
 import com.noobexon.xposedfakelocation.data.KEY_WALKING_SESSION_ID
@@ -102,6 +105,8 @@ import com.noobexon.xposedfakelocation.data.model.FavoriteLocation
 import com.noobexon.xposedfakelocation.data.model.LastClickedLocation
 import com.noobexon.xposedfakelocation.data.normalizeWifiSsid
 import com.noobexon.xposedfakelocation.manager.App
+import com.noobexon.xposedfakelocation.manager.route.Coordinate
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import com.noobexon.xposedfakelocation.manager.route.WalkingRoute
 import com.noobexon.xposedfakelocation.manager.route.WalkingRouteCodec
@@ -525,6 +530,20 @@ class PreferencesRepository(context: Context) {
     fun getWalkingPhaseFlow(): Flow<WalkingPhase> = remoteFlow(KEY_WALKING_PHASE, WalkingPhase.IDLE) { WalkingPhase.fromName(it.getString(KEY_WALKING_PHASE, null)) }
     fun getWalkingPhase(): WalkingPhase = WalkingPhase.fromName(remotePrefs()?.getString(KEY_WALKING_PHASE, null))
 
+    /** Mode of the current (or last prepared) session: planned route or walk-around-the-pin. */
+    fun getWalkingModeFlow(): Flow<WalkingMode> = remoteFlow(KEY_WALKING_MODE, WalkingMode.ROUTE) { WalkingMode.fromName(it.getString(KEY_WALKING_MODE, null)) }
+    fun getWalkingMode(): WalkingMode = WalkingMode.fromName(remotePrefs()?.getString(KEY_WALKING_MODE, null))
+
+    /**
+     * Anchor of the home-walk session (the pinned coordinate), or `null` when no home session is
+     * prepared. Missing or non-finite entries collapse to `null` so a torn-down session can never
+     * resurrect a bogus anchor.
+     */
+    fun getWalkingHomeAnchor(): Coordinate? = Coordinate(
+        readRemoteDouble(KEY_WALKING_HOME_LATITUDE, Double.NaN),
+        readRemoteDouble(KEY_WALKING_HOME_LONGITUDE, Double.NaN),
+    ).takeIf { it.isValid() }
+
     fun getWalkingRouteJsonFlow(): Flow<String?> = remoteFlow<String?>(KEY_WALKING_ROUTE_JSON, null) { it.getString(KEY_WALKING_ROUTE_JSON, null) }
     fun getWalkingRouteJson(): String? = remotePrefs()?.getString(KEY_WALKING_ROUTE_JSON, null)
 
@@ -564,6 +583,9 @@ class PreferencesRepository(context: Context) {
         val now = System.currentTimeMillis()
         editRemote {
             putString(KEY_WALKING_ROUTE_JSON, WalkingRouteCodec.encode(route))
+            putString(KEY_WALKING_MODE, WalkingMode.ROUTE.name)
+            remove(KEY_WALKING_HOME_LATITUDE)
+            remove(KEY_WALKING_HOME_LONGITUDE)
             putString(KEY_WALKING_SESSION_ID, UUID.randomUUID().toString())
             putBoolean(KEY_WALKING_ENABLED, true)
             putString(KEY_WALKING_PHASE, WalkingPhase.WALKING.name)
@@ -571,6 +593,33 @@ class PreferencesRepository(context: Context) {
             putDoubleBits(KEY_WALKING_CURRENT_LONGITUDE, route.origin.longitude)
             putDoubleBits(KEY_WALKING_DISTANCE_TRAVELLED, 0.0)
             putDoubleBits(KEY_WALKING_TOTAL_DISTANCE, route.totalDistanceMeters)
+            putFloat(KEY_WALKING_SPEED, speedMetersPerSecond)
+            putBoolean(KEY_IS_PLAYING, true)
+            putLong(KEY_WALKING_STARTED_AT, now)
+            putLong(KEY_WALKING_UPDATED_AT, now)
+            putString(KEY_WALKING_ERROR_CODE, "")
+        }
+    }
+
+    /**
+     * Starts a home-walk session: the service walks around [anchor] itself instead of following a
+     * planned route, so no route JSON and no total distance are written. One [commit] keeps the
+     * hook-visible state consistent.
+     */
+    suspend fun startHomeWalkingSession(anchor: Coordinate, speedMetersPerSecond: Float) {
+        val now = System.currentTimeMillis()
+        editRemote {
+            remove(KEY_WALKING_ROUTE_JSON)
+            putString(KEY_WALKING_MODE, WalkingMode.HOME.name)
+            putDoubleBits(KEY_WALKING_HOME_LATITUDE, anchor.latitude)
+            putDoubleBits(KEY_WALKING_HOME_LONGITUDE, anchor.longitude)
+            putString(KEY_WALKING_SESSION_ID, UUID.randomUUID().toString())
+            putBoolean(KEY_WALKING_ENABLED, true)
+            putString(KEY_WALKING_PHASE, WalkingPhase.WALKING.name)
+            putDoubleBits(KEY_WALKING_CURRENT_LATITUDE, anchor.latitude)
+            putDoubleBits(KEY_WALKING_CURRENT_LONGITUDE, anchor.longitude)
+            putDoubleBits(KEY_WALKING_DISTANCE_TRAVELLED, 0.0)
+            remove(KEY_WALKING_TOTAL_DISTANCE)
             putFloat(KEY_WALKING_SPEED, speedMetersPerSecond)
             putBoolean(KEY_IS_PLAYING, true)
             putLong(KEY_WALKING_STARTED_AT, now)
@@ -631,8 +680,11 @@ class PreferencesRepository(context: Context) {
             putBoolean(KEY_WALKING_ENABLED, false)
             putString(KEY_WALKING_PHASE, WalkingPhase.IDLE.name)
             putString(KEY_WALKING_ERROR_CODE, "")
+            remove(KEY_WALKING_MODE)
             remove(KEY_WALKING_SESSION_ID)
             remove(KEY_WALKING_ROUTE_JSON)
+            remove(KEY_WALKING_HOME_LATITUDE)
+            remove(KEY_WALKING_HOME_LONGITUDE)
             remove(KEY_WALKING_CURRENT_LATITUDE)
             remove(KEY_WALKING_CURRENT_LONGITUDE)
             remove(KEY_WALKING_DISTANCE_TRAVELLED)
@@ -650,7 +702,10 @@ class PreferencesRepository(context: Context) {
             putBoolean(KEY_WALKING_ENABLED, false)
             putString(KEY_WALKING_PHASE, WalkingPhase.FAILED.name)
             putString(KEY_WALKING_ERROR_CODE, errorCode)
+            remove(KEY_WALKING_MODE)
             remove(KEY_WALKING_SESSION_ID)
+            remove(KEY_WALKING_HOME_LATITUDE)
+            remove(KEY_WALKING_HOME_LONGITUDE)
             putBoolean(KEY_IS_PLAYING, false)
         }
     }

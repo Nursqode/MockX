@@ -1,6 +1,7 @@
 package com.noobexon.xposedfakelocation.manager.notification
 
 import com.noobexon.xposedfakelocation.manager.route.Coordinate
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 
 /**
@@ -24,6 +25,8 @@ data class WalkingNotificationState(
     val sequence: Long,
     val origin: Coordinate? = null,
     val destination: Coordinate? = null,
+    /** Route walk (travelled / total) or home walk (endless, around [destination]). */
+    val mode: WalkingMode = WalkingMode.ROUTE,
 ) {
     /** Progress on the 0..100 percent scale used by the HyperOS progress bar. */
     val progressPercent: Int get() = (progressPerMille / 10).coerceIn(0, 100)
@@ -59,6 +62,9 @@ data class WalkingNotificationState(
          * Assembles the state from one service tick with the phase the service itself knows it is
          * in (the shared preference may lag the in-flight command by one serialised write).
          * ARRIVED pins progress to the full bar (通知体验升级规划.md §7.4); only WALKING gets an ETA.
+         *
+         * A home walk has no destination distance to count down, so its progress stays at zero
+         * (the notification renders an indeterminate bar) and it carries no ETA.
          */
         fun fromSession(
             phase: WalkingPhase,
@@ -68,13 +74,16 @@ data class WalkingNotificationState(
             sequence: Long,
             origin: Coordinate? = null,
             destination: Coordinate? = null,
+            mode: WalkingMode = WalkingMode.ROUTE,
         ): WalkingNotificationState {
-            val progress = if (phase == WalkingPhase.ARRIVED) {
-                PROGRESS_MAX
-            } else {
-                progressPerMille(travelledMeters, totalMeters)
+            val progress = when {
+                phase == WalkingPhase.ARRIVED -> PROGRESS_MAX
+                mode == WalkingMode.HOME -> 0
+                else -> progressPerMille(travelledMeters, totalMeters)
             }
-            val remainingSeconds = if (phase == WalkingPhase.WALKING && speedMetersPerSecond > 0f) {
+            val remainingSeconds = if (phase == WalkingPhase.WALKING &&
+                mode == WalkingMode.ROUTE && speedMetersPerSecond > 0f
+            ) {
                 (((totalMeters - travelledMeters) / speedMetersPerSecond).toLong()).coerceAtLeast(0)
             } else {
                 null
@@ -88,6 +97,7 @@ data class WalkingNotificationState(
                 destination = destination,
                 remainingSeconds = remainingSeconds,
                 sequence = sequence,
+                mode = mode,
             )
         }
     }

@@ -53,7 +53,9 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.navigation.NavController
 import com.noobexon.xposedfakelocation.R
+import com.noobexon.xposedfakelocation.data.HOME_WALK_MAX_RADIUS_METERS
 import com.noobexon.xposedfakelocation.manager.route.WalkingErrorCode
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import com.noobexon.xposedfakelocation.manager.route.WalkingRoute
 import com.noobexon.xposedfakelocation.manager.route.WalkingSpeedPreset
@@ -88,6 +90,7 @@ import top.yukonga.miuix.kmp.icon.extended.Sidebar
 import top.yukonga.miuix.kmp.menu.WindowIconDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 
 /**
  * Full-screen immersive map with HyperOS floating chrome: a top status island (drawer trigger,
@@ -141,6 +144,8 @@ fun MapScreen(
                     Toast.makeText(context, context.getString(walkingErrorRes(event.errorCode)), Toast.LENGTH_LONG).show()
                 is WalkingEvent.RouteReady ->
                     Toast.makeText(context, context.getString(R.string.walk_route_ready_toast), Toast.LENGTH_SHORT).show()
+                is WalkingEvent.HomeWalkStarted ->
+                    Toast.makeText(context, context.getString(R.string.walk_home_started_toast), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -260,7 +265,7 @@ fun MapScreen(
 
                         Column {
                             Text(
-                                text = walkingStatusText(walkingPhase, isPlaying, isFabClickable),
+                                text = walkingStatusText(walkingPhase, isPlaying, isFabClickable, uiState.walkingMode),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colorScheme.onSurface,
@@ -413,6 +418,14 @@ fun MapScreen(
                                     }
                                 )
                                 StatusChip(
+                                    text = stringResource(R.string.map_chip_home_walk),
+                                    isActive = uiState.isHomeWalkingActive,
+                                    modifier = Modifier.clickable(
+                                        enabled = uiState.isHomeWalkingActive ||
+                                            (!isWalkingActive && walkingPhase != WalkingPhase.PLANNING)
+                                    ) { mapViewModel.toggleHomeWalking() }
+                                )
+                                StatusChip(
                                     text = stringResource(R.string.map_chip_clear),
                                     isActive = false,
                                     modifier = Modifier.clickable { mapViewModel.updateClickedLocation(null) }
@@ -498,12 +511,9 @@ fun MapScreen(
         if (showGoToPointDialog) {
             val goToPoint = uiState.goToPointState
             GoToPointDialog(
-                latitude = goToPoint.latitude.value,
-                longitude = goToPoint.longitude.value,
-                latitudeErrorRes = goToPoint.latitude.errorMessageRes,
-                longitudeErrorRes = goToPoint.longitude.errorMessageRes,
-                onLatitudeChange = mapViewModel::onGoToPointLatitudeChange,
-                onLongitudeChange = mapViewModel::onGoToPointLongitudeChange,
+                query = goToPoint.query.value,
+                queryErrorRes = goToPoint.query.errorMessageRes,
+                onQueryChange = mapViewModel::onGoToPointQueryChange,
                 onConfirm = mapViewModel::confirmGoToPoint,
                 onDismissRequest = mapViewModel::hideGoToPointDialog,
             )
@@ -558,20 +568,33 @@ fun MapScreen(
 
 /**
  * Status-island title for the current walking phase, falling back to the fixed-spoof labels.
+ * A running home walk reports its own title instead of the route-walk one.
  */
 @Composable
-private fun walkingStatusText(walkingPhase: WalkingPhase, isPlaying: Boolean, isFabClickable: Boolean): String = when (walkingPhase) {
-    WalkingPhase.PLANNING -> stringResource(R.string.walk_status_planning)
-    WalkingPhase.READY -> stringResource(R.string.walk_status_ready)
-    WalkingPhase.WALKING -> stringResource(R.string.walk_status_walking)
-    WalkingPhase.PAUSED -> stringResource(R.string.walk_status_paused)
-    WalkingPhase.ARRIVED -> stringResource(R.string.walk_status_arrived)
-    WalkingPhase.STOPPING -> stringResource(R.string.walk_status_stopping)
-    WalkingPhase.FAILED -> stringResource(R.string.walk_status_failed)
-    else -> when {
-        isPlaying -> stringResource(R.string.map_status_spoofing)
-        isFabClickable -> stringResource(R.string.map_status_selected)
-        else -> stringResource(R.string.app_name)
+private fun walkingStatusText(
+    walkingPhase: WalkingPhase,
+    isPlaying: Boolean,
+    isFabClickable: Boolean,
+    walkingMode: WalkingMode = WalkingMode.ROUTE,
+): String {
+    if (walkingMode == WalkingMode.HOME &&
+        (walkingPhase == WalkingPhase.WALKING || walkingPhase == WalkingPhase.PAUSED)
+    ) {
+        return stringResource(R.string.walk_status_home)
+    }
+    return when (walkingPhase) {
+        WalkingPhase.PLANNING -> stringResource(R.string.walk_status_planning)
+        WalkingPhase.READY -> stringResource(R.string.walk_status_ready)
+        WalkingPhase.WALKING -> stringResource(R.string.walk_status_walking)
+        WalkingPhase.PAUSED -> stringResource(R.string.walk_status_paused)
+        WalkingPhase.ARRIVED -> stringResource(R.string.walk_status_arrived)
+        WalkingPhase.STOPPING -> stringResource(R.string.walk_status_stopping)
+        WalkingPhase.FAILED -> stringResource(R.string.walk_status_failed)
+        else -> when {
+            isPlaying -> stringResource(R.string.map_status_spoofing)
+            isFabClickable -> stringResource(R.string.map_status_selected)
+            else -> stringResource(R.string.app_name)
+        }
     }
 }
 
@@ -634,7 +657,12 @@ private fun WalkingControlCard(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = walkingStatusText(phase, isPlaying = false, isFabClickable = true),
+                text = walkingStatusText(
+                    walkingPhase = phase,
+                    isPlaying = false,
+                    isFabClickable = true,
+                    walkingMode = uiState.walkingMode,
+                ),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = MiuixTheme.colorScheme.onSurface,
@@ -680,24 +708,34 @@ private fun WalkingControlCard(
             }
 
             WalkingPhase.WALKING, WalkingPhase.PAUSED, WalkingPhase.ARRIVED -> {
+                val isHomeWalk = uiState.walkingMode == WalkingMode.HOME
                 val total = route?.totalDistanceMeters ?: 0.0
                 Spacer(modifier = Modifier.height(10.dp))
-                LinearProgressIndicator(
-                    progress = { if (total > 0) (uiState.walkingDistanceTravelled / total).toFloat().coerceIn(0f, 1f) else 0f },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                WalkingEndpoints(route)
+                if (isHomeWalk) {
+                    // A home walk has no destination or total; the anchor is the reference point.
+                    HomeWalkSpotLine(anchor = uiState.lastClickedLocation)
+                } else {
+                    LinearProgressIndicator(
+                        progress = { if (total > 0) (uiState.walkingDistanceTravelled / total).toFloat().coerceIn(0f, 1f) else 0f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    WalkingEndpoints(route)
+                }
                 Text(
-                    text = stringResource(
-                        R.string.walk_progress_format,
-                        formatWalkingDistance(uiState.walkingDistanceTravelled),
-                        formatWalkingDistance(total),
-                    ),
+                    text = if (isHomeWalk) {
+                        stringResource(R.string.walk_home_progress_format, formatWalkingDistance(uiState.walkingDistanceTravelled))
+                    } else {
+                        stringResource(
+                            R.string.walk_progress_format,
+                            formatWalkingDistance(uiState.walkingDistanceTravelled),
+                            formatWalkingDistance(total),
+                        )
+                    },
                     fontSize = 12.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                 )
-                if (phase != WalkingPhase.ARRIVED && route != null && uiState.walkingSpeedPreset.metersPerSecond > 0f) {
+                if (!isHomeWalk && phase != WalkingPhase.ARRIVED && route != null && uiState.walkingSpeedPreset.metersPerSecond > 0f) {
                     val remaining = ((total - uiState.walkingDistanceTravelled) / uiState.walkingSpeedPreset.metersPerSecond)
                         .toLong().coerceAtLeast(0)
                     Text(
@@ -792,6 +830,23 @@ private fun WalkingEndpoints(route: WalkingRoute?) {
     Text(
         text = stringResource(R.string.walk_origin) + " " + formatCoordinate(route.origin) +
             " → " + stringResource(R.string.walk_destination) + " " + formatCoordinate(route.destination),
+        fontSize = 12.sp,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/** Reference line for a home walk: the pinned anchor and the radius the walker stays inside. */
+@Composable
+private fun HomeWalkSpotLine(anchor: GeoPoint?) {
+    if (anchor == null) return
+    Text(
+        text = stringResource(
+            R.string.walk_home_spot_format,
+            HOME_WALK_MAX_RADIUS_METERS.toInt(),
+            String.format(Locale.US, "%.5f, %.5f", anchor.latitude, anchor.longitude),
+        ),
         fontSize = 12.sp,
         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         maxLines = 2,

@@ -181,3 +181,18 @@ const val WALKING_TICK_INTERVAL_MS = 1000L
 const val WALKING_MAX_CATCHUP_SECONDS = 30.0
 /** A WALKING state whose updated_at is older than this is considered stale by the hooks. */
 const val WALKING_STATE_STALE_MS = 15_000L
+
+// WALKING SIMULATION MODES
+/** Remote key holding [WALKING_MODE_ROUTE] or [WALKING_MODE_HOME]. */
+const val KEY_WALKING_MODE = "walking_mode"
+/** Follow a planned route from the real position to the pinned destination (Amap). */
+const val WALKING_MODE_ROUTE = "ROUTE"
+/** Move around the pinned coordinate itself, without planning a route (home walk). */
+const val WALKING_MODE_HOME = "HOME"
+/** Remote keys holding the home-walk anchor (the pinned coordinate) in WGS-84. */
+const val KEY_WALKING_HOME_LATITUDE = "walking_home_latitude"
+const val KEY_WALKING_HOME_LONGITUDE = "walking_home_longitude"
+/** Lower bound (metres) of the home-walk radius around the anchor. */
+const val HOME_WALK_MIN_RADIUS_METERS = 1.0
+/** Upper bound (metres) of the home-walk radius around the anchor. */
+const val HOME_WALK_MAX_RADIUS_METERS = 20.0

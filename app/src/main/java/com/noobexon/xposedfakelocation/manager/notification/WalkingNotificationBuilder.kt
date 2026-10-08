@@ -12,6 +12,7 @@ import androidx.core.graphics.drawable.IconCompat
 import com.noobexon.xposedfakelocation.R
 import com.noobexon.xposedfakelocation.data.repository.PreferencesRepository
 import com.noobexon.xposedfakelocation.manager.MainActivity
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import com.noobexon.xposedfakelocation.manager.walking.WalkingSimulationService
 
@@ -39,6 +40,8 @@ class WalkingNotificationBuilder(private val context: Context) {
     fun build(state: WalkingNotificationState): Notification {
         val title = formatter.contentTitle()
         val text = formatter.contentText(state)
+        // A home walk has no destination to measure progress against, so its bar is indefinite.
+        val isHomeWalk = state.mode == WalkingMode.HOME
         val builder = NotificationCompat.Builder(context, WalkingSimulationService.CHANNEL_ID)
             .setSmallIcon(SMALL_ICON_RES)
             .setContentTitle(title)
@@ -49,7 +52,11 @@ class WalkingNotificationBuilder(private val context: Context) {
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setContentIntent(contentIntent())
             // The legacy bar stays the baseline; on API 36+ the Live Update style replaces it.
-            .setProgress(WalkingNotificationState.PROGRESS_MAX, state.progressPerMille, false)
+            .setProgress(
+                if (isHomeWalk) 0 else WalkingNotificationState.PROGRESS_MAX,
+                if (isHomeWalk) 0 else state.progressPerMille,
+                isHomeWalk,
+            )
 
         // ETA countdown in the header (and in the promoted status chip) while walking.
         if (state.phase == WalkingPhase.WALKING && state.remainingSeconds != null && state.remainingSeconds > 0) {
@@ -115,6 +122,8 @@ class WalkingNotificationBuilder(private val context: Context) {
                             .takeIf { it.isNotBlank() },
                     )
                 },
+                // The island's progress bar is a travelled/total ratio, which a home walk lacks.
+                hideProgress = isHomeWalk,
             )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             AndroidLiveUpdateAdapter.styleSpec(state)?.let { spec ->

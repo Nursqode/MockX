@@ -1,5 +1,6 @@
 package com.noobexon.xposedfakelocation.manager.notification
 
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -10,6 +11,7 @@ class NotificationContentFormatterTest {
 
     private val texts = WalkingNotificationTexts(
         walkingTemplate = "Walked %s / %s",
+        homeWalkingTemplate = "Around the spot · %s",
         paused = "Walk paused — position held",
         arrived = "Arrived at the destination",
         statusWalking = "Simulating walk",
@@ -50,6 +52,22 @@ class NotificationContentFormatterTest {
         assertEquals(texts.paused, NotificationTextResolver.contentText(paused, texts))
         val arrived = WalkingNotificationState(WalkingPhase.ARRIVED, 1000, 1000.0, 1000.0, null, 2)
         assertEquals(texts.arrived, NotificationTextResolver.contentText(arrived, texts))
+    }
+
+    @Test
+    fun `home walk reports the travelled distance without a total`() {
+        val state = WalkingNotificationState(
+            phase = WalkingPhase.WALKING,
+            progressPerMille = 0,
+            travelledMeters = 250.0,
+            totalMeters = 0.0,
+            remainingSeconds = null,
+            sequence = 1,
+            mode = WalkingMode.HOME,
+        )
+
+        assertEquals("Around the spot · 250 m", NotificationTextResolver.contentText(state, texts))
+        assertEquals("250 m", NotificationTextResolver.distanceSummary(state))
     }
 
     @Test

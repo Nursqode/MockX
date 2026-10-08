@@ -185,10 +185,14 @@
     <string name="field_description">Description (optional)</string>
     <string name="field_latitude">Latitude</string>
     <string name="field_longitude">Longitude</string>
+    <string name="field_coordinates">Coordinates or IP address</string>
+    <string name="field_coordinates_hint">Example: -15.029552, 40.2055142 or 8.8.8.8</string>
     <string name="field_template">Template</string>
     <string name="validation_name_required">Please provide a name</string>
     <string name="validation_latitude_range">Latitude must be between -90 and 90</string>
     <string name="validation_longitude_range">Longitude must be between -180 and 180</string>
+    <string name="validation_location_query">Enter coordinates or an IP address</string>
+    <string name="validation_ip_lookup_failed">Unable to find the location of this IP address</string>
     <string name="coordinates_lat_lon">Lat: %1$s, Lon: %2$s</string>
     <string name="new_location_format">New location: %1$s, %2$s</string>
     <string name="current_location_format">Current: %1$s, %2$s</string>
@@ -259,6 +263,7 @@
     <string name="walk_status_arrived">Arrived at destination</string>
     <string name="walk_status_stopping">Stopping…</string>
     <string name="walk_status_failed">Route planning failed</string>
+    <string name="walk_status_home">Walking around the pinned spot</string>
     <string name="walk_start">Start Walking</string>
     <string name="walk_pause">Pause</string>
     <string name="walk_resume">Resume</string>
@@ -267,8 +272,11 @@
     <string name="walk_active_pill">Walking simulation active</string>
     <string name="walk_planning_pill">Planning route…</string>
     <string name="walk_progress_format">Walked %1$s · total %2$s</string>
+    <string name="walk_home_progress_format">Walked %1$s around the spot</string>
+    <string name="walk_home_spot_format">Within %1$d m of %2$s</string>
     <string name="walk_eta_format">approx. %1$d min</string>
     <string name="walk_route_ready_toast">Walking route is ready</string>
+    <string name="walk_home_started_toast">Home walk started around the pinned spot</string>
     <string name="walk_replace_title">Replace current spoofing?</string>
     <string name="walk_replace_message">A fixed-position spoof is active. Starting the walking simulation will stop it and move along the planned route instead.</string>
     <string name="walk_replace_confirm">Start Walking</string>
@@ -290,6 +298,7 @@
     <string name="walk_notification_channel_description">Shown while MockX simulates movement along a walking route.</string>
     <string name="walk_notification_title">MockX is simulating a walk</string>
     <string name="walk_notification_text">Walked %1$s / %2$s</string>
+    <string name="walk_notification_home_text">Walking around the pinned spot · %1$s</string>
     <string name="walk_notification_paused_text">Walk paused — position held</string>
     <string name="walk_notification_arrived_text">Arrived at the destination</string>
 
@@ -346,6 +355,7 @@
     <string name="map_status_selected">Location selected</string>
     <string name="map_spoof_target">Spoof target</string>
     <string name="map_chip_favorite">Favorite</string>
+    <string name="map_chip_home_walk">Home walk</string>
     <string name="map_chip_clear">Clear</string>
     <string name="map_hint_place_pin">Tap the map to drop a pin and choose a virtual location</string>
     <string name="map_start_spoof">Start spoofing</string>

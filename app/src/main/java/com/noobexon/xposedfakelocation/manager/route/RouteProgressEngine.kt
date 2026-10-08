@@ -6,6 +6,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Source of walker positions for the walking service: answers "where is the walker after N
+ * metres of walking".
+ *
+ * [RouteProgressEngine] resolves a finite, pre-computed polyline; [HomeWalkEngine] generates an
+ * open-ended path around a fixed anchor and reports an infinite total length.
+ */
+interface WalkEngine {
+    /** Total path length in metres, or [Double.POSITIVE_INFINITY] for open-ended paths. */
+    val totalDistanceMeters: Double
+
+    /** Position, bearing and arrival flag for [distanceMeters] metres travelled along the path. */
+    fun positionAt(distanceMeters: Double): PositionSnapshot
+}
+
+/**
  * Geometry for walking along a parsed route.
  *
  * Owns the cumulative-distance table for the route's trajectory points and answers
@@ -15,13 +30,13 @@ import kotlin.math.sqrt
  * Pure Kotlin (no Android framework calls): the service feeds it real elapsed time, unit
  * tests feed fixed values.
  */
-class RouteProgressEngine(private val points: List<Coordinate>) {
+class RouteProgressEngine(private val points: List<Coordinate>) : WalkEngine {
 
     /** Cumulative distance (metres) from the origin to each point; same length as [points]. */
     val cumulativeDistances: DoubleArray
 
     /** Total path length in metres; always > 0 for a valid route. */
-    val totalDistanceMeters: Double
+    override val totalDistanceMeters: Double
 
     init {
         require(points.size >= 2) { "RouteProgressEngine needs at least 2 points" }
@@ -43,7 +58,7 @@ class RouteProgressEngine(private val points: List<Coordinate>) {
      * the first segment; at the end it keeps the bearing of the final segment instead of
      * defaulting to 0 (north).
      */
-    fun positionAt(distanceMeters: Double): PositionSnapshot {
+    override fun positionAt(distanceMeters: Double): PositionSnapshot {
         val target = distanceMeters.coerceIn(0.0, totalDistanceMeters)
 
         // Binary search for the first point whose cumulative distance >= target.
@@ -73,27 +88,30 @@ class RouteProgressEngine(private val points: List<Coordinate>) {
 
         val arrived = distanceMeters >= totalDistanceMeters
         val bearingDegrees = if (arrived && startIndex == endIndex) {
-            bearingMeters(points[points.size - 2], points.last())
+            initialBearingDegrees(points[points.size - 2], points.last())
         } else {
-            bearingMeters(from, to)
+            initialBearingDegrees(from, to)
         }
 
         return PositionSnapshot(coordinate, bearingDegrees, arrived)
     }
 
-    /** Initial bearing (degrees clockwise from true north) when walking from [from] to [to]. */
-    fun bearingMeters(from: Coordinate, to: Coordinate): Float {
-        if (from == to) return 0f
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val deltaLon = Math.toRadians(to.longitude - from.longitude)
-        val y = sin(deltaLon) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon)
-        val degrees = Math.toDegrees(atan2(y, x))
-        return ((degrees % 360.0) + 360.0).let { if (it >= 360.0) it - 360.0 else it }.toFloat()
-    }
-
     companion object {
+        /**
+         * Initial bearing (degrees clockwise from true north) when walking from [from] to [to];
+         * `0f` for a degenerate segment.
+         */
+        fun initialBearingDegrees(from: Coordinate, to: Coordinate): Float {
+            if (from == to) return 0f
+            val lat1 = Math.toRadians(from.latitude)
+            val lat2 = Math.toRadians(to.latitude)
+            val deltaLon = Math.toRadians(to.longitude - from.longitude)
+            val y = sin(deltaLon) * cos(lat2)
+            val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon)
+            val degrees = Math.toDegrees(atan2(y, x))
+            return ((degrees % 360.0) + 360.0).let { if (it >= 360.0) it - 360.0 else it }.toFloat()
+        }
+
         /** Great-circle distance in metres between two WGS-84 points (Haversine formula). */
         fun haversineMeters(a: Coordinate, b: Coordinate): Double {
             val earthRadius = 6371008.8 // mean Earth radius, metres

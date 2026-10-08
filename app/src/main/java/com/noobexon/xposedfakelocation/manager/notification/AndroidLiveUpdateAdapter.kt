@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.graphics.drawable.IconCompat
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 
 /**
@@ -25,9 +26,12 @@ data class LiveUpdateStyleSpec(
  */
 object AndroidLiveUpdateAdapter {
 
-    /** Null for phases without a movement surface (IDLE/PLANNING/READY/STOPPING/FAILED). */
+    /**
+     * Null for phases without a movement surface (IDLE/PLANNING/READY/STOPPING/FAILED) and for a
+     * home walk, whose endless progress has no fraction to drive a promoted Live Update bar.
+     */
     fun styleSpec(state: WalkingNotificationState): LiveUpdateStyleSpec? {
-        if (!state.isActiveSession) return null
+        if (!state.isActiveSession || state.mode == WalkingMode.HOME) return null
         val marker = when (state.phase) {
             WalkingPhase.PAUSED -> LiveUpdateStyleSpec.TrackerMarker.PAUSED
             WalkingPhase.ARRIVED -> LiveUpdateStyleSpec.TrackerMarker.ARRIVED

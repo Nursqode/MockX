@@ -20,16 +20,17 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
- * Dialog that lets the user jump to an arbitrary coordinate.
+ * Dialog that lets the user jump to an arbitrary coordinate using one field.
+ *
+ * Supported inputs:
+ * - coordinates: "-15.029552, 40.2055142" / "-15.029552 40.2055142" / "-15.029552; 40.2055142"
+ * - an IPv4/IPv6 address, resolved to its approximate location by the IP lookup.
  */
 @Composable
 fun GoToPointDialog(
-    latitude: String,
-    longitude: String,
-    @StringRes latitudeErrorRes: Int?,
-    @StringRes longitudeErrorRes: Int?,
-    onLatitudeChange: (String) -> Unit,
-    onLongitudeChange: (String) -> Unit,
+    query: String,
+    @StringRes queryErrorRes: Int?,
+    onQueryChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -42,17 +43,20 @@ fun GoToPointDialog(
     ) {
         Column {
             CoordinateInputField(
-                value = latitude,
-                onValueChange = onLatitudeChange,
-                label = stringResource(R.string.field_latitude),
-                errorRes = latitudeErrorRes,
+                value = query,
+                onValueChange = onQueryChange,
+                label = stringResource(R.string.field_coordinates),
+                errorRes = queryErrorRes,
+                keyboardType = KeyboardType.Text,
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            CoordinateInputField(
-                value = longitude,
-                onValueChange = onLongitudeChange,
-                label = stringResource(R.string.field_longitude),
-                errorRes = longitudeErrorRes,
+
+            Text(
+                text = stringResource(R.string.field_coordinates_hint),
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
             )
         }
     }

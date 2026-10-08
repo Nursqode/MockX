@@ -63,6 +63,23 @@ class WalkingAdvanceTest {
         assertEquals(engine.positionAt(engine.totalDistanceMeters).coordinate, snapshot.coordinate)
     }
 
+    @Test
+    fun `an endless home walk never arrives and stays near its anchor`() {
+        val service = WalkingSimulationService()
+        val anchor = Coordinate(55.751244, 37.618423)
+        val homeEngine = HomeWalkEngine(anchor)
+
+        // One minute of continuous walking, then a capped catch-up tick.
+        repeat(60) { service.advance(homeEngine, 1.0, 1.4f) }
+        val snapshot = service.advance(homeEngine, elapsedSeconds = 3600.0, speedMetersPerSecond = 1.4f)
+
+        assertFalse(snapshot.arrived)
+        // 60 one-second ticks plus one 30 s catch-up tick at 1.4 m/s (float speed accumulates).
+        assertEquals(60.0 * 1.4 + 30.0 * 1.4, serviceDistance(service), 1e-4)
+        val fromAnchor = RouteProgressEngine.haversineMeters(anchor, snapshot.coordinate)
+        assertTrue("distance from anchor=$fromAnchor", fromAnchor in 1.0..20.0)
+    }
+
     private fun serviceDistance(service: WalkingSimulationService): Double {
         val field = WalkingSimulationService::class.java.getDeclaredField("distanceTravelledMeters")
         field.isAccessible = true

@@ -41,6 +41,27 @@ data class Coordinate(val latitude: Double, val longitude: Double) {
 }
 
 /**
+ * How the simulated walker generates its positions.
+ *
+ * [ROUTE] follows a planned Amap walking route from the real position to the pinned
+ * destination; [HOME] walks around the pinned coordinate itself, staying
+ * [com.noobexon.xposedfakelocation.data.HOME_WALK_MIN_RADIUS_METERS]…
+ * [com.noobexon.xposedfakelocation.data.HOME_WALK_MAX_RADIUS_METERS] metres away from it and
+ * needing no route planning, network access or API key. The value's [name] is what gets
+ * persisted to [com.noobexon.xposedfakelocation.data.KEY_WALKING_MODE].
+ */
+enum class WalkingMode {
+    ROUTE,
+    HOME;
+
+    companion object {
+        /** Unknown or missing values fall back to [ROUTE], the pre-existing behaviour. */
+        fun fromName(name: String?): WalkingMode =
+            entries.firstOrNull { it.name == name } ?: ROUTE
+    }
+}
+
+/**
  * A parsed walking route. All [points] are WGS-84, ordered from origin to destination, with
  * at least two entries and no consecutive duplicates.
  */

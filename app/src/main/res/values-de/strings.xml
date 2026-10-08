@@ -185,10 +185,14 @@
     <string name="field_description">Beschreibung (optional)</string>
     <string name="field_latitude">Breitengrad</string>
     <string name="field_longitude">Längengrad</string>
+    <string name="field_coordinates">Koordinaten oder IP-Adresse</string>
+    <string name="field_coordinates_hint">Beispiel: 39.9042, 116.4074 oder 8.8.8.8</string>
     <string name="field_template">Vorlage</string>
     <string name="validation_name_required">Bitte gib einen Namen ein</string>
     <string name="validation_latitude_range">Breitengrad muss zwischen -90 und 90 liegen</string>
     <string name="validation_longitude_range">Längengrad muss zwischen -180 und 180 liegen</string>
+    <string name="validation_location_query">Koordinaten oder eine IP-Adresse eingeben</string>
+    <string name="validation_ip_lookup_failed">Standort der IP-Adresse konnte nicht ermittelt werden</string>
     <string name="coordinates_lat_lon">Breite: %1$s, Länge: %2$s</string>
     <string name="new_location_format">Neuer Standort: %1$s, %2$s</string>
     <string name="current_location_format">Aktuell: %1$s, %2$s</string>
@@ -292,6 +296,7 @@
     <string name="map_status_selected">Standort ausgewählt</string>
     <string name="map_spoof_target">Spoofing-Ziel</string>
     <string name="map_chip_favorite">Favorit</string>
+    <string name="map_chip_home_walk">Zuhause</string>
     <string name="map_chip_clear">Löschen</string>
     <string name="map_hint_place_pin">Tippe auf die Karte, um eine Markierung zu setzen und einen virtuellen Standort zu wählen</string>
     <string name="map_start_spoof">Spoofing starten</string>
@@ -309,6 +314,11 @@
     <string name="walk_origin">Start</string>
     <string name="walk_destination">Ziel</string>
     <string name="walk_arrival_format">Voraussichtliche Ankunft %1$s</string>
+    <string name="walk_status_home">Bewegung rund um den Standort</string>
+    <string name="walk_home_progress_format">%1$s rund um den Standort zurückgelegt</string>
+    <string name="walk_home_spot_format">Bis %1$d m um %2$s</string>
+    <string name="walk_home_started_toast">Bewegung rund um den Standort gestartet</string>
+    <string name="walk_notification_home_text">Bewegung rund um den Standort · %1$s</string>
     <string name="virtual_location_mode">Virtueller Standort</string>
     <string name="virtual_location_active">Virtueller Standort aktiv</string>
     <string name="virtual_location_elapsed">Verstrichen %1$s</string>

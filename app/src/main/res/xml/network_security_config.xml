@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext stays disabled app-wide; the free IP-geolocation endpoint used by the
+  "Go to point" dialog (coordinates-or-IP field) is HTTP-only, so it is allow-listed by
+  host instead of enabling cleartext globally.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">ip-api.com</domain>
+    </domain-config>
+</network-security-config>

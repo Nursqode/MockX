@@ -16,7 +16,9 @@ import com.noobexon.xposedfakelocation.manager.notification.WalkingNotificationB
 import com.noobexon.xposedfakelocation.manager.notification.WalkingNotificationState
 import com.noobexon.xposedfakelocation.manager.route.PositionSnapshot
 import com.noobexon.xposedfakelocation.manager.route.RouteProgressEngine
+import com.noobexon.xposedfakelocation.manager.route.WalkEngine
 import com.noobexon.xposedfakelocation.manager.route.WalkingErrorCode
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import com.noobexon.xposedfakelocation.manager.route.WalkingRoute
 import com.noobexon.xposedfakelocation.manager.route.WalkingRouteCodec
@@ -72,7 +74,7 @@ class WalkingSimulationService : Service() {
     private var sessionId: String? = null
 
     private var tickJob: Job? = null
-    private var engine: RouteProgressEngine? = null
+    private var engine: WalkEngine? = null
     private var distanceTravelledMeters = 0.0
     private var lastTickElapsedRealtime = 0L
     private var wakeLock: PowerManager.WakeLock? = null
@@ -118,14 +120,31 @@ class WalkingSimulationService : Service() {
 
     // region Session control
 
-    /** Loads the route and progress cursor from shared state, unless already loaded. */
+    /**
+     * Loads the walk engine and progress cursor from shared state, unless already loaded.
+     *
+     * A home-walk session builds an open-ended [HomeWalkEngine] around its stored anchor; a route
+     * session restores the planned polyline. Anything else (missing route, no anchor) is not a
+     * runnable session and fails the caller.
+     */
     private fun ensureLoaded(): Boolean {
         if (engine != null) return true
-        val restored = WalkingRouteCodec.decode(repository.getWalkingRouteJson())
-        if (restored == null || restored.points.size < 2) return false
-        engine = RouteProgressEngine(restored.points)
-        distanceTravelledMeters = repository.getWalkingDistanceTravelled().coerceIn(0.0, restored.totalDistanceMeters)
-        return true
+        return when (repository.getWalkingMode()) {
+            WalkingMode.HOME -> {
+                val anchor = repository.getWalkingHomeAnchor() ?: return false
+                engine = HomeWalkEngine(anchor)
+                distanceTravelledMeters = repository.getWalkingDistanceTravelled().coerceAtLeast(0.0)
+                true
+            }
+
+            WalkingMode.ROUTE -> {
+                val restored = WalkingRouteCodec.decode(repository.getWalkingRouteJson())
+                if (restored == null || restored.points.size < 2) return false
+                engine = RouteProgressEngine(restored.points)
+                distanceTravelledMeters = repository.getWalkingDistanceTravelled().coerceIn(0.0, restored.totalDistanceMeters)
+                true
+            }
+        }
     }
 
     private fun startSession() {
@@ -340,7 +359,7 @@ class WalkingSimulationService : Service() {
      * by at most [WALKING_MAX_CATCHUP_SECONDS] worth of distance so the marker never teleports.
      * Exposed for unit tests.
      */
-    internal fun advance(engine: RouteProgressEngine, elapsedSeconds: Double, speedMetersPerSecond: Float): PositionSnapshot {
+    internal fun advance(engine: WalkEngine, elapsedSeconds: Double, speedMetersPerSecond: Float): PositionSnapshot {
         if (elapsedSeconds > 0) {
             val effective = min(elapsedSeconds, WALKING_MAX_CATCHUP_SECONDS)
             distanceTravelledMeters = min(
@@ -382,17 +401,24 @@ class WalkingSimulationService : Service() {
      * Assembles the shared notification state. All backends (standard bar, Android 16 Live
      * Update, HyperOS island) consume exactly this state — none of them recompute progress
      * (通知体验升级规划.md §5.2).
+     *
+     * A home-walk session has no destination and no total distance, so it reports the anchor as
+     * the destination, a zero total (no progress bar) and no ETA.
      */
-    private fun buildState(phase: WalkingPhase): WalkingNotificationState =
-        WalkingNotificationState.fromSession(
+    private fun buildState(phase: WalkingPhase): WalkingNotificationState {
+        val mode = repository.getWalkingMode()
+        val route = if (mode == WalkingMode.ROUTE) WalkingRouteCodec.decode(repository.getWalkingRouteJson()) else null
+        return WalkingNotificationState.fromSession(
             phase = phase,
             travelledMeters = distanceTravelledMeters,
-            totalMeters = repository.getWalkingTotalDistance(),
+            totalMeters = if (mode == WalkingMode.HOME) 0.0 else repository.getWalkingTotalDistance(),
             speedMetersPerSecond = repository.getWalkingSpeed(),
             sequence = notificationSequence.incrementAndGet(),
-            origin = WalkingRouteCodec.decode(repository.getWalkingRouteJson())?.origin,
-            destination = WalkingRouteCodec.decode(repository.getWalkingRouteJson())?.destination,
+            origin = route?.origin,
+            destination = if (mode == WalkingMode.HOME) repository.getWalkingHomeAnchor() else route?.destination,
+            mode = mode,
         )
+    }
 
     private fun rememberSent(state: WalkingNotificationState) {
         synchronized(notificationLock) {

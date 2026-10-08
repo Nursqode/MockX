@@ -1,5 +1,6 @@
 package com.noobexon.xposedfakelocation.manager.notification
 
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -42,6 +43,21 @@ class AndroidLiveUpdateAdapterTest {
                 WalkingNotificationState(phase, 0, 0.0, 100.0, null, 1),
             ))
         }
+    }
+
+    @Test
+    fun `home walk produces no Live Update spec because it has no progress fraction`() {
+        val state = WalkingNotificationState(
+            phase = WalkingPhase.WALKING,
+            progressPerMille = 0,
+            travelledMeters = 120.0,
+            totalMeters = 0.0,
+            remainingSeconds = null,
+            sequence = 1,
+            mode = WalkingMode.HOME,
+        )
+
+        assertNull(AndroidLiveUpdateAdapter.styleSpec(state))
     }
 
     @Test

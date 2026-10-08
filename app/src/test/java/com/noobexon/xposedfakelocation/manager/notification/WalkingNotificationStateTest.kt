@@ -1,5 +1,7 @@
 package com.noobexon.xposedfakelocation.manager.notification
 
+import com.noobexon.xposedfakelocation.manager.route.Coordinate
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,6 +70,25 @@ class WalkingNotificationStateTest {
     fun `zero-speed walking has no ETA instead of dividing by zero`() {
         val state = WalkingNotificationState.fromSession(WalkingPhase.WALKING, 0.0, 100.0, 0f, 4)
         assertNull(state.remainingSeconds)
+    }
+
+    @Test
+    fun `home walk carries no progress fraction and no ETA`() {
+        val state = WalkingNotificationState.fromSession(
+            phase = WalkingPhase.WALKING,
+            travelledMeters = 120.0,
+            totalMeters = 0.0,
+            speedMetersPerSecond = 1.4f,
+            sequence = 5,
+            destination = Coordinate(55.751244, 37.618423),
+            mode = WalkingMode.HOME,
+        )
+
+        assertEquals(0, state.progressPerMille)
+        assertNull(state.remainingSeconds)
+        assertEquals(WalkingMode.HOME, state.mode)
+        assertTrue(state.isActiveSession)
+        assertEquals(Coordinate(55.751244, 37.618423), state.destination)
     }
 
     @Test

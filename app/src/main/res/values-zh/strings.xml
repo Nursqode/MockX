@@ -183,10 +183,14 @@
     <string name="field_description">描述（可选）</string>
     <string name="field_latitude">纬度</string>
     <string name="field_longitude">经度</string>
+    <string name="field_coordinates">坐标或 IP 地址</string>
+    <string name="field_coordinates_hint">例如：39.9042, 116.4074 或 8.8.8.8</string>
     <string name="field_template">模板</string>
     <string name="validation_name_required">请提供名称</string>
     <string name="validation_latitude_range">纬度必须介于 -90 到 90 之间</string>
     <string name="validation_longitude_range">经度必须介于 -180 到 180 之间</string>
+    <string name="validation_location_query">请输入坐标或 IP 地址</string>
+    <string name="validation_ip_lookup_failed">无法查询此 IP 地址的位置</string>
     <string name="coordinates_lat_lon">纬度：%1$s，经度：%2$s</string>
     <string name="new_location_format">新位置：%1$s，%2$s</string>
     <string name="current_location_format">当前：%1$s，%2$s</string>
@@ -257,6 +261,7 @@
     <string name="walk_status_arrived">已到达终点</string>
     <string name="walk_status_stopping">正在停止…</string>
     <string name="walk_status_failed">路线规划失败</string>
+    <string name="walk_status_home">正在定点附近行走</string>
     <string name="walk_start">开始步行模拟</string>
     <string name="walk_pause">暂停</string>
     <string name="walk_resume">继续</string>
@@ -265,8 +270,11 @@
     <string name="walk_active_pill">步行模拟进行中</string>
     <string name="walk_planning_pill">正在规划路线…</string>
     <string name="walk_progress_format">已走 %1$s · 共 %2$s</string>
+    <string name="walk_home_progress_format">已在附近行走 %1$s</string>
+    <string name="walk_home_spot_format">距 %2$s 不超过 %1$d 米</string>
     <string name="walk_eta_format">约 %1$d 分钟</string>
     <string name="walk_route_ready_toast">步行路线已准备就绪</string>
+    <string name="walk_home_started_toast">已开始在定点附近行走</string>
     <string name="walk_replace_title">替换当前伪装？</string>
     <string name="walk_replace_message">当前固定位置伪装正在运行。开始步行模拟将停止固定伪装，改为沿规划路线移动。</string>
     <string name="walk_replace_confirm">开始步行</string>
@@ -288,6 +296,7 @@
     <string name="walk_notification_channel_description">MockX 沿步行路线模拟移动时显示的通知。</string>
     <string name="walk_notification_title">MockX 正在模拟步行</string>
     <string name="walk_notification_text">已走 %1$s / %2$s</string>
+    <string name="walk_notification_home_text">正在定点附近行走 · %1$s</string>
     <string name="walk_notification_paused_text">步行已暂停——位置保持不变</string>
     <string name="walk_notification_arrived_text">已到达终点</string>
 
@@ -344,6 +353,7 @@
     <string name="map_status_selected">位置已选定</string>
     <string name="map_spoof_target">伪装目标位置</string>
     <string name="map_chip_favorite">收藏</string>
+    <string name="map_chip_home_walk">在家行走</string>
     <string name="map_chip_clear">清除</string>
     <string name="map_hint_place_pin">轻触地图任意位置放置图钉以选定虚拟位置</string>
     <string name="map_start_spoof">开启虚拟定位</string>

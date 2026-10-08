@@ -3,6 +3,7 @@ package com.noobexon.xposedfakelocation.manager.ui.map
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import com.noobexon.xposedfakelocation.manager.route.WalkingErrorCode
+import com.noobexon.xposedfakelocation.manager.route.WalkingMode
 import com.noobexon.xposedfakelocation.manager.route.WalkingPhase
 import com.noobexon.xposedfakelocation.manager.route.WalkingRoute
 import com.noobexon.xposedfakelocation.manager.route.WalkingSpeedPreset
@@ -18,12 +19,14 @@ import org.osmdroid.util.GeoPoint
 data class InputFieldState(val value: String = "", @StringRes val errorMessageRes: Int? = null)
 
 /**
- * Input state for the "Go to point" dialog (latitude + longitude fields).
+ * Input state for the "Go to point" dialog.
+ *
+ * The single [InputFieldState] accepts coordinates in one field ("-15.029552, 40.2055142") or an
+ * IP address whose location is resolved through the IP geolocation lookup.
  */
 @Immutable
 data class GoToPointInputState(
-    val latitude: InputFieldState = InputFieldState(),
-    val longitude: InputFieldState = InputFieldState()
+    val query: InputFieldState = InputFieldState()
 )
 
 /**
@@ -71,6 +74,8 @@ data class MapUiState(
     // Walking simulation
     val walkingPhase: WalkingPhase = WalkingPhase.IDLE,
     val walkingRoute: WalkingRoute? = null,
+    /** Whether the current session follows a planned route or walks around the pin. */
+    val walkingMode: WalkingMode = WalkingMode.ROUTE,
     /** Live dynamic position of the simulated walker in WGS-84, or `null` when idle. */
     val walkingCurrentPosition: GeoPoint? = null,
     val walkingDistanceTravelled: Double = 0.0,
@@ -89,6 +94,10 @@ data class MapUiState(
             walkingPhase == WalkingPhase.PAUSED ||
             walkingPhase == WalkingPhase.ARRIVED ||
             walkingPhase == WalkingPhase.STOPPING
+
+    /** `true` while the one-button home walk (movement around the pin) is running. */
+    val isHomeWalkingActive: Boolean
+        get() = walkingMode == WalkingMode.HOME && isWalkingActive
 
     /** Map taps must be ignored while spoofing is live or a route is being planned. */
     val isMapInteractionLocked: Boolean
